@@ -15,8 +15,8 @@ repositories {
     mavenLocal();
     mavenCentral()
     maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
-    maven { url 'https://maven.java.net/content/repositories/snapshots' }
 }
+
 configurations {
     quasar
     capsule
@@ -34,29 +34,19 @@ configurations.all {
 
 dependencies {
     compile "org.slf4j:slf4j-api:1.7.7"
-    //  runtime "org.slf4j:slf4j-jdk14:1.7.7"
+    compile "co.paralleluniverse:quasar-core:$quasarVersion"
+    compile "co.paralleluniverse:comsat-httpclient:$comsatVersion"    
+    compile 'commons-cli:commons-cli:1.2'
     runtime "org.apache.logging.log4j:log4j-slf4j-impl:2.0-rc1"
     runtime "org.apache.logging.log4j:log4j-api:2.0-rc1"
     runtime "org.apache.logging.log4j:log4j-core:2.0-rc1"
-    compile "co.paralleluniverse:quasar-core:$quasarVersion"
-//    compile "co.paralleluniverse:comsat-servlet:$comsatVersion"
-    compile "co.paralleluniverse:comsat-httpclient:$comsatVersion"    
-//    compile "org.eclipse.jetty:jetty-server:$jettyVersion"
-//    compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
-    quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
-//    compile 'io.undertow:undertow-core:1.0.12.Final'
-//    compile 'io.undertow:undertow-servlet:1.0.12.Final'
-//    compile 'io.undertow:undertow-websockets-jsr:1.0.12.Final'
-//    compile 'io.undertow:undertow-examples:1.0.12.Final'
-    compile 'commons-cli:commons-cli:1.2'
     capsule 'co.paralleluniverse:capsule:0.3.1'
+    quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
 }
 
 run {
     jvmArgs "-javaagent:${configurations.quasar.iterator().next()}" // =v, =d
     jvmArgs '-server'
-//    jvmArgs "-XX:+UnlockCommercialFeatures","-XX:+FlightRecorder"
-//    jvmArgs "-XX:StartFlightRecording=duration=30s,delay=2s,filename=myrecording.jfr,settings=ProfilingHeap.jfc"
     jvmArgs '-Xmx4096m'
     jvmArgs "-XX:+UseG1GC","-XX:MaxGCPauseMillis=200"
     systemProperty "log4j.configurationFile", "log4j.xml"    
@@ -64,19 +54,7 @@ run {
     classpath = sourceSets.main.runtimeClasspath   
     if(project.hasProperty('args')){
         args project.args.split('\\s+')
-        //    } else {
-        //        args "http://54.73.179.243:1234","/fiber","5000","50"
     }
-    //        args "http://localhost:8080","/fiber","5000","1000"
-    //    systemProperty 'com.sun.management.jmxremote.port','1234'
-    //    systemProperty 'com.Fsun.management.jmxremote.authenticate','false'
-    //    systemProperty 'com.sun.management.jmxremote.ssl','false'
-    // systemProperty 'co.paralleluniverse.fibers.verifyInstrumentation', 'true'
-    //    systemProperty "org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog"
-    //    systemProperty "org.apache.commons.logging.simplelog.showdatetime","true"
-    ////    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager","DEBUG"
-    //    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http","DEBUG"
-    //    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.wire","ERROR"
 }
 def getDependencies(config) {
     return config.getAllDependencies().collect { 
