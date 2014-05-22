@@ -7,6 +7,8 @@ sourceCompatibility = '1.8'
 mainClassName = 'co.paralleluniverse.photon.Photon'
 version = "0.1.0"
 
+ext.licenseName    = "Apache License, Version 2.0"
+ext.licenseUrl     = "http://www.apache.org/licenses/LICENSE-2.0"
 ext.quasarVersion = '0.6.0-SNAPSHOT'
 ext.comsatVersion = '0.2.0-SNAPSHOT'
 ext.jettyVersion  = '9.2.0.M0'
@@ -109,3 +111,22 @@ task fullCapsule(type: Jar, dependsOn: jar) {
 }
 
 
+apply plugin: 'license'
+license {
+    header rootProject.file('LICENSE')
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
+    strictCheck true
+    skipExistingHeaders true
+    mapping('java','SLASHSTAR_STYLE')
+}
+
+// needed to the license plugin
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.7.0'
+    }
+}  
