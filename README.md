@@ -1,6 +1,6 @@
-photon
+Photon
 ======
-Small apllications that lets you fire tens of thousends concurrent http reuquests from a single computer.
+Small apllication that lets you fire tens of thousends concurrent http reuquests from a single computer.
 To do this photon spawns lightweigt thread  instead of real threads for each connection. Photon is based on [quasar](http://github.com/puniverse/quasar) and [comsat](http://github.com/puniverse/comsat) libraries.
 
 ## Usage
