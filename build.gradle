@@ -1,11 +1,12 @@
 apply plugin: 'java'
+apply plugin: 'application'
 
 sourceCompatibility = '1.8'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
-if (!hasProperty('mainClass')) {
-    ext.mainClass = ''
-}
+mainClassName = 'co.paralleluniverse.photon.Photon'
+version = "0.1.0"
+
 ext.quasarVersion = '0.6.0-SNAPSHOT'
 ext.comsatVersion = '0.2.0-SNAPSHOT'
 ext.jettyVersion  = '9.2.0.M0'
@@ -18,6 +19,7 @@ repositories {
 }
 configurations {
     quasar
+    capsule
 }
 
 configurations.all {
@@ -37,25 +39,27 @@ dependencies {
     runtime "org.apache.logging.log4j:log4j-api:2.0-rc1"
     runtime "org.apache.logging.log4j:log4j-core:2.0-rc1"
     compile "co.paralleluniverse:quasar-core:$quasarVersion"
-    compile "co.paralleluniverse:comsat-servlet:$comsatVersion"
+//    compile "co.paralleluniverse:comsat-servlet:$comsatVersion"
     compile "co.paralleluniverse:comsat-httpclient:$comsatVersion"    
-    compile "org.eclipse.jetty:jetty-server:$jettyVersion"
-    compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
+//    compile "org.eclipse.jetty:jetty-server:$jettyVersion"
+//    compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
     quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
-    compile 'io.undertow:undertow-core:1.0.12.Final'
-    compile 'io.undertow:undertow-servlet:1.0.12.Final'
-    compile 'io.undertow:undertow-websockets-jsr:1.0.12.Final'
-    compile 'io.undertow:undertow-examples:1.0.12.Final'
+//    compile 'io.undertow:undertow-core:1.0.12.Final'
+//    compile 'io.undertow:undertow-servlet:1.0.12.Final'
+//    compile 'io.undertow:undertow-websockets-jsr:1.0.12.Final'
+//    compile 'io.undertow:undertow-examples:1.0.12.Final'
+    compile 'commons-cli:commons-cli:1.2'
+    capsule 'co.paralleluniverse:capsule:0.3.1'
 }
 
-tasks.withType(JavaExec) {
-    main = mainClass
+run {
     jvmArgs "-javaagent:${configurations.quasar.iterator().next()}" // =v, =d
     jvmArgs '-server'
-    jvmArgs "-XX:+UnlockCommercialFeatures","-XX:+FlightRecorder"
-    jvmArgs "-XX:StartFlightRecording=duration=30s,delay=2s,filename=myrecording.jfr,settings=ProfilingHeap.jfc"
+//    jvmArgs "-XX:+UnlockCommercialFeatures","-XX:+FlightRecorder"
+//    jvmArgs "-XX:StartFlightRecording=duration=30s,delay=2s,filename=myrecording.jfr,settings=ProfilingHeap.jfc"
     jvmArgs '-Xmx4096m'
     jvmArgs "-XX:+UseG1GC","-XX:MaxGCPauseMillis=200"
+    systemProperty "log4j.configurationFile", "log4j.xml"    
     //    jvmArgs "-ea"
     classpath = sourceSets.main.runtimeClasspath   
     if(project.hasProperty('args')){
@@ -68,23 +72,62 @@ tasks.withType(JavaExec) {
     //    systemProperty 'com.Fsun.management.jmxremote.authenticate','false'
     //    systemProperty 'com.sun.management.jmxremote.ssl','false'
     // systemProperty 'co.paralleluniverse.fibers.verifyInstrumentation', 'true'
-//    systemProperty "org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog"
-//    systemProperty "org.apache.commons.logging.simplelog.showdatetime","true"
-////    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager","DEBUG"
-//    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http","DEBUG"
-//    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.wire","ERROR"
+    //    systemProperty "org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog"
+    //    systemProperty "org.apache.commons.logging.simplelog.showdatetime","true"
+    ////    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager","DEBUG"
+    //    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http","DEBUG"
+    //    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.wire","ERROR"
+}
+def getDependencies(config) {
+    return config.getAllDependencies().collect { 
+        def res = it.group + ':' + it.name + ':' + it.version + (!it.artifacts.isEmpty() ? ':' + it.artifacts.iterator().next().classifier : '')
+        if(!it.excludeRules.isEmpty()) {
+            res += "(" + it.excludeRules.collect { it.group + ':' + it.module }.join(',') + ")"
+        }
+        return res
+    }
+}
+task capsule(type: Jar, dependsOn: classes) {
+    archiveName = "photon.jar"
+    from sourceSets.main.output // this way we don't need to extract
+
+    from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
+
+    manifest {
+        attributes(
+            'Main-Class'        : 'Capsule',
+            'Application-Class' : mainClassName,
+            'Application-Version' : version,
+            'Extract-Capsule'   : 'false', // don't extract capsule to the filesystem
+            'Min-Java-Version'  : '1.8.0',
+            'JVM-Args'          : run.jvmArgs.join(' '),
+            'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+            'Dependencies'      : getDependencies(configurations.runtime).join(' '),
+            'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
+        )
+    }
 }
 
-task(Server, dependsOn: 'classes', type: JavaExec) {
-    main = 'co.paralleluniverse.examples.comsatjetty.CascadingFailureServer'
+task fullCapsule(type: Jar, dependsOn: jar) {
+    archiveName = "photon.jar"
+
+    from jar // embed our application jar
+    from { configurations.runtime } // embed dependencies
+
+    from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
+
+    manifest {
+        attributes(
+            'Main-Class'        : 'Capsule',
+            'Application-Class' : mainClassName,
+            'Application-Version' : version,
+            'Min-Java-Version'  : '1.8.0',
+            'JVM-Args'          : run.jvmArgs.join(' '),
+            'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
+            'Java-Agents'       : configurations.quasar.iterator().next().getName()
+        )
+    }
 }
-task(Clients, dependsOn: 'classes', type: JavaExec) {
-    main = 'co.paralleluniverse.examples.comsatjetty.ClientTesters'
-}
-task(PerfServ, dependsOn: 'classes', type: JavaExec) {
-    main = 'co.paralleluniverse.examples.comsatjetty.PerformanceTest'
-}
-task(PerfCli, dependsOn: 'classes', type: JavaExec) {
-    main = 'co.paralleluniverse.examples.comsatjetty.PerfClient'
-}
-defaultTasks 'Server'
+
+
