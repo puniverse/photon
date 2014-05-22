@@ -16,7 +16,6 @@ import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.logging.Log;
@@ -54,49 +53,46 @@ public class Photon {
         try (CloseableHttpClient client = new FiberHttpClient(createDefaultHttpAsyncClient(null))) {
             System.out.println(new Date() + " starting..");
             int num = DURATION * rate;
-            boolean print = true;
             int tenth = num / 10;
             Timer httpTimer = metrics.timer("httpTimer");
             Meter requestMeter = metrics.meter("req");
 
             CountDownLatch cdl = new CountDownLatch(num);
             Semaphore sem = new Semaphore(MAX_CONN);
-            new ThreadFactoryBuilder().setDaemon(true).build().newThread(() -> {
-                final RateLimiter rl = RateLimiter.create(rate);
+            final RateLimiter rl = RateLimiter.create(rate);
 
-                for (int i = 0; i < num; i++) {
-                    rl.acquire();
-                    if (sem.availablePermits() == 0)
-                        System.out.println(new Date() + " waiting...");
-                    sem.acquireUninterruptibly();
+            for (int i = 0; i < num; i++) {
+                rl.acquire();
+                if (sem.availablePermits() == 0)
+                    System.out.println(new Date() + " waiting...");
+                sem.acquireUninterruptibly();
 
-                    final int constCounter = i + 1;
-                    new Fiber<Void>(() -> {
-                        final Timer.Context ctx = httpTimer.time();
-                        requestMeter.mark();
-                        if (constCounter % tenth == 0)
-                            log.info(" sent(" + constCounter + ") " + constCounter / tenth * 10 + "%..."
-                                    + " openConnections: " + (MAX_CONN - sem.availablePermits())
-                                    + " meanRate: " + df.format(requestMeter.getMeanRate()));
-                        try {
-                            client.execute(request).close();
-                        } catch (IOException ex) {
-                            errors.putIfAbsent(ex.getClass().getName(), new AtomicInteger());
-                            errors.get(ex.getClass().getName()).incrementAndGet();
-                        } finally {
-                            ctx.stop();
-                            sem.release();
-                            cdl.countDown();
-                            long count = num - cdl.getCount();
-                            if (print && (count) % tenth == 0)
-                                log.info(" responeded (" + count + ") " + ((count) / tenth * 10) + "%..."
-                                        + " mean: " + nanos2secs(httpTimer.getSnapshot().getMean())
-                                        + " 95th: " + nanos2secs(httpTimer.getSnapshot().get95thPercentile())
-                                        + " 99th: " + nanos2secs(httpTimer.getSnapshot().get99thPercentile()));
-                        }
-                    }).start();
-                }
-            }).start();
+                final int constCounter = i + 1;
+                new Fiber<Void>(() -> {
+                    final Timer.Context ctx = httpTimer.time();
+                    requestMeter.mark();
+                    if (constCounter % tenth == 0)
+                        log.info(" sent(" + constCounter + ") " + constCounter / tenth * 10 + "%..."
+                                + " openConnections: " + (MAX_CONN - sem.availablePermits())
+                                + " meanRate: " + df.format(requestMeter.getMeanRate()));
+                    try {
+                        client.execute(request).close();
+                    } catch (IOException ex) {
+                        errors.putIfAbsent(ex.getClass().getName(), new AtomicInteger());
+                        errors.get(ex.getClass().getName()).incrementAndGet();
+                    } finally {
+                        ctx.stop();
+                        sem.release();
+                        cdl.countDown();
+                        long count = num - cdl.getCount();
+                        if (count % tenth == 0)
+                            log.info(" responeded (" + count + ") " + ((count) / tenth * 10) + "%..."
+                                    + " mean: " + nanos2secs(httpTimer.getSnapshot().getMean())
+                                    + " 95th: " + nanos2secs(httpTimer.getSnapshot().get95thPercentile())
+                                    + " 99th: " + nanos2secs(httpTimer.getSnapshot().get99thPercentile()));
+                    }
+                }).start();
+            }
             cdl.await();
             errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
         }
