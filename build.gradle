@@ -1,0 +1,90 @@
+apply plugin: 'java'
+
+sourceCompatibility = '1.8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+if (!hasProperty('mainClass')) {
+    ext.mainClass = ''
+}
+ext.quasarVersion = '0.6.0-SNAPSHOT'
+ext.comsatVersion = '0.2.0-SNAPSHOT'
+ext.jettyVersion  = '9.2.0.M0'
+
+repositories {
+    mavenLocal();
+    mavenCentral()
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+    maven { url 'https://maven.java.net/content/repositories/snapshots' }
+}
+configurations {
+    quasar
+}
+
+configurations.all {
+    resolutionStrategy {
+        //        failOnVersionConflict()
+        force 'org.slf4j:slf4j-api:1.7.6'
+        force 'com.google.guava:guava:16.0.1'
+        force 'org.ow2.asm:asm:5.0.1'
+        force 'org.ow2.asm:asm-commons:5.0.1'
+    }
+}
+
+dependencies {
+    compile "org.slf4j:slf4j-api:1.7.7"
+    //  runtime "org.slf4j:slf4j-jdk14:1.7.7"
+    runtime "org.apache.logging.log4j:log4j-slf4j-impl:2.0-rc1"
+    runtime "org.apache.logging.log4j:log4j-api:2.0-rc1"
+    runtime "org.apache.logging.log4j:log4j-core:2.0-rc1"
+    compile "co.paralleluniverse:quasar-core:$quasarVersion"
+    compile "co.paralleluniverse:comsat-servlet:$comsatVersion"
+    compile "co.paralleluniverse:comsat-httpclient:$comsatVersion"    
+    compile "org.eclipse.jetty:jetty-server:$jettyVersion"
+    compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
+    quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
+    compile 'io.undertow:undertow-core:1.0.12.Final'
+    compile 'io.undertow:undertow-servlet:1.0.12.Final'
+    compile 'io.undertow:undertow-websockets-jsr:1.0.12.Final'
+    compile 'io.undertow:undertow-examples:1.0.12.Final'
+}
+
+tasks.withType(JavaExec) {
+    main = mainClass
+    jvmArgs "-javaagent:${configurations.quasar.iterator().next()}" // =v, =d
+    jvmArgs '-server'
+    jvmArgs "-XX:+UnlockCommercialFeatures","-XX:+FlightRecorder"
+    jvmArgs "-XX:StartFlightRecording=duration=30s,delay=2s,filename=myrecording.jfr,settings=ProfilingHeap.jfc"
+    jvmArgs '-Xmx4096m'
+    jvmArgs "-XX:+UseG1GC","-XX:MaxGCPauseMillis=200"
+    //    jvmArgs "-ea"
+    classpath = sourceSets.main.runtimeClasspath   
+    if(project.hasProperty('args')){
+        args project.args.split('\\s+')
+        //    } else {
+        //        args "http://54.73.179.243:1234","/fiber","5000","50"
+    }
+    //        args "http://localhost:8080","/fiber","5000","1000"
+    //    systemProperty 'com.sun.management.jmxremote.port','1234'
+    //    systemProperty 'com.Fsun.management.jmxremote.authenticate','false'
+    //    systemProperty 'com.sun.management.jmxremote.ssl','false'
+    // systemProperty 'co.paralleluniverse.fibers.verifyInstrumentation', 'true'
+//    systemProperty "org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog"
+//    systemProperty "org.apache.commons.logging.simplelog.showdatetime","true"
+////    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager","DEBUG"
+//    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http","DEBUG"
+//    systemProperty "org.apache.commons.logging.simplelog.log.org.apache.http.wire","ERROR"
+}
+
+task(Server, dependsOn: 'classes', type: JavaExec) {
+    main = 'co.paralleluniverse.examples.comsatjetty.CascadingFailureServer'
+}
+task(Clients, dependsOn: 'classes', type: JavaExec) {
+    main = 'co.paralleluniverse.examples.comsatjetty.ClientTesters'
+}
+task(PerfServ, dependsOn: 'classes', type: JavaExec) {
+    main = 'co.paralleluniverse.examples.comsatjetty.PerformanceTest'
+}
+task(PerfCli, dependsOn: 'classes', type: JavaExec) {
+    main = 'co.paralleluniverse.examples.comsatjetty.PerfClient'
+}
+defaultTasks 'Server'
