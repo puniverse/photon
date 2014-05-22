@@ -93,7 +93,7 @@ public class Photon {
                         final Timer.Context ctx = httpTimer.time();
                         requestMeter.mark();
                         if (constCounter % tenth == 0)
-                            log.info(" sent(" + constCounter + ") " + constCounter / tenth * 10 + "%..."
+                            log.info("Sent(" + constCounter + ") " + constCounter / tenth * 10 + "%..."
                                     + " openConnections: " + (maxConnections - sem.availablePermits())
                                     + " meanRate: " + df.format(requestMeter.getMeanRate()));
                         try {
@@ -107,7 +107,7 @@ public class Photon {
                             cdl.countDown();
                             long count = num - cdl.getCount();
                             if (count % tenth == 0)
-                                log.info(" responeded (" + count + ") " + ((count) / tenth * 10) + "%..."
+                                log.info("Responeded (" + count + ") " + ((count) / tenth * 10) + "%..."
                                         + " mean: " + nanos2secs(httpTimer.getSnapshot().getMean())
                                         + " 95th: " + nanos2secs(httpTimer.getSnapshot().get95thPercentile())
                                         + " 99th: " + nanos2secs(httpTimer.getSnapshot().get99thPercentile()));
