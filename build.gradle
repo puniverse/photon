@@ -72,7 +72,7 @@ task capsule(type: Jar, dependsOn: classes) {
     from sourceSets.main.output // this way we don't need to extract
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
-    from { 'log4j.xml' } // embed dependencies
+    from 'log4j.xml'
 
     manifest {
         attributes(
@@ -95,7 +95,7 @@ task fullCapsule(type: Jar, dependsOn: jar) {
 
     from jar // embed our application jar
     from { configurations.runtime } // embed dependencies
-    from { 'log4j.xml' } // embed dependencies
+    from 'log4j.xml'
 
     from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
 
