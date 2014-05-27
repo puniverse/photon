@@ -141,7 +141,6 @@ public class Photon {
                             long millis = TimeUnit.NANOSECONDS.toMillis(now - start);
                             sts.record(now, millis);
                             sh.recordValue(millis);
-                            sh.getHistogramData();
                             sem.release();
                             cdl.countDown();
                         }
