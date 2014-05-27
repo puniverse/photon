@@ -23,7 +23,10 @@ import co.paralleluniverse.fibers.httpclient.FiberHttpClient;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.RateLimiter;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -89,9 +93,10 @@ public class Photon {
             final StripedHistogram sh = new StripedHistogram(60000, 5);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (cmd.hasOption("stats"))
-                    printFinishStatistics(sts, sh, errorsMeter, errors, log, testName);
-                else
-                    System.out.println("responseTime(90%): "+sh.getHistogramData().getValueAtPercentile(90));
+                    printFinishStatistics(sts, sh, testName);
+                if (errorsMeter.getCount() > 0)
+                    errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
+                System.out.println("responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90));
             }));
 
             log.info("url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
@@ -151,16 +156,20 @@ public class Photon {
         }
     }
 
-    private static void printFinishStatistics(StripedTimeSeries<Long> sts, StripedHistogram sh, Meter errorsMeter, final ConcurrentHashMap<String, AtomicInteger> errors, final Logger log, String testName) {
-        long millisTime = new Date().getTime();
-        long nanoTime = System.nanoTime();
-        sts.getRecords().forEach(rec -> System.out.println(df.format(new Date(TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp) + millisTime))
-                + " " + testName + " responseTime " + rec.value + "ms"));
-        System.out.println("\nHistogram:");
-        for (int i = 0; i <= 100; i++)
-            System.out.println(testName + " responseTimeHistogram " + i + "% : " + sh.getHistogramData().getValueAtPercentile(i));
-        if (errorsMeter.getCount() > 0)
-            errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
+    private static void printFinishStatistics(StripedTimeSeries<Long> sts, StripedHistogram sh, String testName) {
+        File file = new File(testName + ".txt");
+        try (PrintWriter out = new PrintWriter(file)) {
+            long millisTime = new Date().getTime();
+            long nanoTime = System.nanoTime();
+            sts.getRecords().forEach(rec -> out.println(df.format(new Date(TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp) + millisTime))
+                    + " " + testName + " responseTime " + rec.value + "ms"));
+            out.println("\nHistogram:");
+            for (int i = 0; i <= 100; i++)
+                out.println(testName + " responseTimeHistogram " + i + "% : " + sh.getHistogramData().getValueAtPercentile(i));
+            System.out.println("staticsfile: "+file.getAbsolutePath());
+        } catch (FileNotFoundException ex) {
+            System.err.println(ex);
+        }
     }
 
     private static void spawnStatisticsThread(final int printCycle, CountDownLatch cdl, final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, final String testName) {
