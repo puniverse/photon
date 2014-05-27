@@ -96,7 +96,7 @@ public class Photon {
                     printFinishStatistics(sts, sh, testName);
                 if (errorsMeter.getCount() > 0)
                     errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
-                System.out.println("responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90));
+                System.out.println(testName+" responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90)+"ms");
             }));
 
             log.info("url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
