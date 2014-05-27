@@ -16,15 +16,19 @@
  */
 package co.paralleluniverse.photon;
 
+import co.paralleluniverse.common.benchmark.StripedHistogram;
+import co.paralleluniverse.common.benchmark.StripedTimeSeries;
 import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.httpclient.FiberHttpClient;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Snapshot;
-import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -58,6 +62,7 @@ public class Photon {
         options.addOption("maxconnections", true, "maximum number of open connections");
         options.addOption("timeout", true, "connection and read timeout in millis");
         options.addOption("print", true, "print cycle in millis. 0 to disable intermediate statistics");
+        options.addOption("stats", false, "print full statistics when finish");
         options.addOption("name", true, "test name to print in the statistics");
         options.addOption("help", false, "print help");
 
@@ -74,13 +79,22 @@ public class Photon {
             final String testName = cmd.getOptionValue("name", "test");
             final int rate = Integer.parseInt(cmd.getOptionValue("rate", "10"));
             final MetricRegistry metrics = new MetricRegistry();
+            final Meter requestMeter = metrics.meter("reqest");
+            final Meter responseMeter = metrics.meter("response");
+            final Meter errorsMeter = metrics.meter("errors");
             final Logger log = LoggerFactory.getLogger(Photon.class);
-            System.out.println();
-
             final ConcurrentHashMap<String, AtomicInteger> errors = new ConcurrentHashMap<>();
             final HttpGet request = new HttpGet(url);
-            log.info("url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
+            final StripedTimeSeries<Long> sts = new StripedTimeSeries(10000, false);
+            final StripedHistogram sh = new StripedHistogram(60000, 5);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (cmd.hasOption("stats"))
+                    printFinishStatistics(sts, sh, errorsMeter, errors, log, testName);
+                else
+                    System.out.println("responseTime(90%): "+sh.getHistogramData().getValueAtPercentile(90));
+            }));
 
+            log.info("url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
             PoolingNHttpClientConnectionManager mngr = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(IOReactorConfig.custom().
                     setConnectTimeout(timeout).
                     setIoThreadCount(10).
@@ -94,16 +108,12 @@ public class Photon {
 
             try (CloseableHttpClient client = new FiberHttpClient(ahc)) {
                 int num = duaration * rate;
-                Timer httpTimer = metrics.timer("httpTimer");
-                Meter requestMeter = metrics.meter("reqest");
-                Meter responseMeter = metrics.meter("response");
-                Meter errorsMeter = metrics.meter("errors");
 
                 CountDownLatch cdl = new CountDownLatch(num);
                 Semaphore sem = new Semaphore(maxConnections);
                 final RateLimiter rl = RateLimiter.create(rate);
 
-                spawnStatisticsThread(printCycle, cdl, log, requestMeter, responseMeter, errorsMeter, httpTimer, testName);
+                spawnStatisticsThread(printCycle, cdl, log, requestMeter, responseMeter, errorsMeter, testName);
 
                 for (int i = 0; i < num; i++) {
                     rl.acquire();
@@ -112,8 +122,8 @@ public class Photon {
                     sem.acquireUninterruptibly();
 
                     new Fiber<Void>(() -> {
-                        final Timer.Context ctx = httpTimer.time();
                         requestMeter.mark();
+                        long start = System.nanoTime();
                         try {
                             client.execute(request).close();
                             responseMeter.mark();
@@ -122,28 +132,43 @@ public class Photon {
                             errors.putIfAbsent(ex.getClass().getName(), new AtomicInteger());
                             errors.get(ex.getClass().getName()).incrementAndGet();
                         } finally {
-                            ctx.stop();
+                            final long now = System.nanoTime();
+                            long millis = TimeUnit.NANOSECONDS.toMillis(now - start);
+                            sts.record(now, millis);
+                            sh.recordValue(millis);
+                            sh.getHistogramData();
                             sem.release();
                             cdl.countDown();
                         }
                     }).start();
                 }
                 cdl.await();
-                printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, httpTimer.getSnapshot(), testName);
-                if (errorsMeter.getCount() > 0)
-                    errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
+
+//                printFinishStatistics(sts, sh, errorsMeter, errors, log, testName);
             }
         } catch (ParseException ex) {
             System.err.println("Parsing failed.  Reason: " + ex.getMessage());
         }
     }
 
-    private static void spawnStatisticsThread(final int printCycle, CountDownLatch cdl, final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, Timer httpTimer, final String testName) {
+    private static void printFinishStatistics(StripedTimeSeries<Long> sts, StripedHistogram sh, Meter errorsMeter, final ConcurrentHashMap<String, AtomicInteger> errors, final Logger log, String testName) {
+        long millisTime = new Date().getTime();
+        long nanoTime = System.nanoTime();
+        sts.getRecords().forEach(rec -> System.out.println(df.format(new Date(TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp) + millisTime))
+                + " " + testName + " responseTime " + rec.value + "ms"));
+        System.out.println("\nHistogram:");
+        for (int i = 0; i <= 100; i++)
+            System.out.println(testName + " responseTimeHistogram " + i + "% : " + sh.getHistogramData().getValueAtPercentile(i));
+        if (errorsMeter.getCount() > 0)
+            errors.entrySet().stream().forEach(p -> log.info(p.getKey() + " " + p.getValue()));
+    }
+
+    private static void spawnStatisticsThread(final int printCycle, CountDownLatch cdl, final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, final String testName) {
         new Thread(() -> {
             try {
                 if (printCycle > 0)
                     while (!cdl.await(printCycle, TimeUnit.MILLISECONDS)) {
-                        printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, httpTimer.getSnapshot(), testName);
+                        printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, testName);
                     }
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
@@ -151,14 +176,12 @@ public class Photon {
         }).start();
     }
 
-    private static void printStatisticsLine(final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, final Snapshot timerSnapshot, final String testName) {
-        log.info(testName+" STATS: "
-                + "req: " + requestMeter.getCount() + " "+df.format(requestMeter.getMeanRate())+"Hz "
-                + "resp: " + responseMeter.getCount() + " "+df.format(responseMeter.getMeanRate())+"Hz "
+    private static void printStatisticsLine(final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, final String testName) {
+        log.info(testName + " STATS: "
+                + "req: " + requestMeter.getCount() + " " + nf.format(requestMeter.getMeanRate()) + "Hz "
+                + "resp: " + responseMeter.getCount() + " " + nf.format(responseMeter.getMeanRate()) + "Hz "
                 + "err: " + errorsMeter.getCount() + " "
-                + "open: " + (requestMeter.getCount() - errorsMeter.getCount() - responseMeter.getCount()) + " "
-                + "respTime(50%): " + nanos2secs(timerSnapshot.getMedian()) + " "
-                + "respTime(95%): " + nanos2secs(timerSnapshot.get95thPercentile()));
+                + "open: " + (requestMeter.getCount() - errorsMeter.getCount() - responseMeter.getCount()));
     }
 
     private static void printUsageAndExit(Options options) {
@@ -167,7 +190,8 @@ public class Photon {
     }
 
     static String nanos2secs(double nanos) {
-        return df.format(nanos / TimeUnit.SECONDS.toNanos(1)) + "s";
+        return nf.format(nanos / TimeUnit.SECONDS.toNanos(1)) + "s";
     }
-    static DecimalFormat df = new DecimalFormat("#.##");
+    static SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
+    static DecimalFormat nf = new DecimalFormat("#.##");
 }
