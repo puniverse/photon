@@ -153,8 +153,8 @@ public class Photon {
 
     private static void printStatisticsLine(final Logger log, Meter requestMeter, Meter responseMeter, Meter errorsMeter, final Snapshot timerSnapshot, final String testName) {
         log.info(testName+" STATS: "
-                + "req: " + requestMeter.getCount() + " "
-                + "resp: " + responseMeter.getCount() + " "
+                + "req: " + requestMeter.getCount() + " "+df.format(requestMeter.getMeanRate())+"Hz "
+                + "resp: " + responseMeter.getCount() + " "+df.format(responseMeter.getMeanRate())+"Hz "
                 + "err: " + errorsMeter.getCount() + " "
                 + "open: " + (requestMeter.getCount() - errorsMeter.getCount() - responseMeter.getCount()) + " "
                 + "respTime(50%): " + nanos2secs(timerSnapshot.getMedian()) + " "
