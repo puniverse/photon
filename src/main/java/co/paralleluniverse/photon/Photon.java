@@ -29,16 +29,12 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -94,12 +90,12 @@ public class Photon {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (cmd.hasOption("stats"))
                     printFinishStatistics(sts, sh, testName);
-                if (errorsMeter.getCount() > 0)
+                if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
                 System.out.println(testName+" responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90)+"ms");
             }));
 
-            log.info("url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
+            log.info("name: "+testName+" url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
             PoolingNHttpClientConnectionManager mngr = new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(IOReactorConfig.custom().
                     setConnectTimeout(timeout).
                     setIoThreadCount(10).
