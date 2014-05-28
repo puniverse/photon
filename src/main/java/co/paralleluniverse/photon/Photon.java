@@ -89,7 +89,7 @@ public class Photon {
             final StripedHistogram sh = new StripedHistogram(60000, 5);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (cmd.hasOption("stats"))
-                    printFinishStatistics(sts, sh, testName);
+                    printFinishStatistics(errorsMeter, sts, sh, testName);
                 if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
                 System.out.println(testName+" responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90)+"ms");
@@ -151,9 +151,10 @@ public class Photon {
         }
     }
 
-    private static void printFinishStatistics(StripedTimeSeries<Long> sts, StripedHistogram sh, String testName) {
+    private static void printFinishStatistics(Meter errors, StripedTimeSeries<Long> sts, StripedHistogram sh, String testName) {
         File file = new File(testName + ".txt");
         try (PrintWriter out = new PrintWriter(file)) {
+            out.println("ErrorsCounter: "+errors.getCount());
             long millisTime = new Date().getTime();
             long nanoTime = System.nanoTime();
             sts.getRecords().forEach(rec -> out.println(df.format(new Date(TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp) + millisTime))
