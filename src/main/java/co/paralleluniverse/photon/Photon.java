@@ -135,7 +135,7 @@ public class Photon {
                         } finally {
                             final long now = System.nanoTime();
                             long millis = TimeUnit.NANOSECONDS.toMillis(now - start);
-                            sts.record(now, millis);
+                            sts.record(start, millis);
                             sh.recordValue(millis);
                             sem.release();
                             cdl.countDown();
