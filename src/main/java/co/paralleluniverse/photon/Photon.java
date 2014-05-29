@@ -85,7 +85,7 @@ public class Photon {
             final Logger log = LoggerFactory.getLogger(Photon.class);
             final ConcurrentHashMap<String, AtomicInteger> errors = new ConcurrentHashMap<>();
             final HttpGet request = new HttpGet(url);
-            final StripedTimeSeries<Long> sts = new StripedTimeSeries(10000, false);
+            final StripedTimeSeries<Long> sts = new StripedTimeSeries(30000, false);
             final StripedHistogram sh = new StripedHistogram(60000, 5);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (cmd.hasOption("stats"))
