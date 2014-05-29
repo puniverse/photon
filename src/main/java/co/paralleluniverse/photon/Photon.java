@@ -157,7 +157,7 @@ public class Photon {
             out.println("ErrorsCounter: "+errors.getCount());
             long millisTime = new Date().getTime();
             long nanoTime = System.nanoTime();
-            sts.getRecords().forEach(rec -> out.println(df.format(new Date(TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp) + millisTime))
+            sts.getRecords().forEach(rec -> out.println(df.format(new Date(millisTime - TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp)))
                     + " " + testName + " responseTime " + rec.value + "ms"));
             out.println("\nHistogram:");
             for (int i = 0; i <= 100; i++)
