@@ -12,7 +12,12 @@ usage: java -jar photon.jar [options] url
  -duration <arg>         test duration in seconds
  -help                   print help
  -maxconnections <arg>   maximum number of open connections
+ -minmax                 print min/mean/stddev/max stats when finish
+ -name <arg>             test name to print in the statistics
+ -print <arg>            print cycle in millis. 0 to disable intermediate
+                         statistics
  -rate <arg>             requests per second
+ -stats                  print full statistics when finish
  -timeout <arg>          connection and read timeout in millis
 ``` 
 
