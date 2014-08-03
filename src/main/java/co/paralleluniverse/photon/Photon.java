@@ -16,6 +16,7 @@
  */
 package co.paralleluniverse.photon;
 
+import org.HdrHistogram.HistogramData;
 import co.paralleluniverse.common.benchmark.StripedHistogram;
 import co.paralleluniverse.common.benchmark.StripedTimeSeries;
 import co.paralleluniverse.fibers.Fiber;
@@ -63,6 +64,7 @@ public class Photon {
         options.addOption("timeout", true, "connection and read timeout in millis");
         options.addOption("print", true, "print cycle in millis. 0 to disable intermediate statistics");
         options.addOption("stats", false, "print full statistics when finish");
+        options.addOption("minmax", false, "print min/mean/stddev/max stats when finish");
         options.addOption("name", true, "test name to print in the statistics");
         options.addOption("help", false, "print help");
 
@@ -93,6 +95,11 @@ public class Photon {
                 if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
                 System.out.println(testName+" responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90)+"ms");
+                if (cmd.hasOption("minmax")) {
+                    HistogramData hd = sh.getHistogramData();
+                    System.out.format("%s %8s%8s%8s%8s\n", testName, "min", "mean", "sd", "max");
+                    System.out.format("%s %8d%8.2f%8.2f%8d\n", testName, hd.getMinValue(), hd.getMean(), hd.getStdDeviation(), hd.getMaxValue());
+                }
             }));
 
             log.info("name: "+testName+" url:" + url + " rate:" + rate + " duration:" + duaration + " maxconnections:" + maxConnections + ", " + "timeout:" + timeout);
