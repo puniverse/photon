@@ -58,33 +58,44 @@ import org.slf4j.LoggerFactory;
 
 public class Photon {
 
+    private static final String rateDefault = "10";
+    private static final String testNameDefault = "test";
+    private static final String durationDefault = "10";
+    private static final String maxConnectionsDefault = "150000";
+    private static final String timeoutDefault = "10000";
+    private static final String printCycleDefault = "1000";
+    private static final String checkCycleDefault = "10000";
+
     public static void main(final String[] args) throws InterruptedException, IOException {
 
         final Options options = new Options();
-        options.addOption("rate", true, "requests per second");
-        options.addOption("duration", true, "test duration in seconds");
-        options.addOption("maxconnections", true, "maximum number of open connections");
-        options.addOption("timeout", true, "connection and read timeout in millis");
-        options.addOption("print", true, "print cycle in millis. 0 to disable intermediate statistics");
-        options.addOption("check", true, "progress check cycle in millis. 0 to disable progress check");
-        options.addOption("stats", false, "print full statistics when finish");
-        options.addOption("minmax", false, "print min/mean/stddev/max stats when finish");
-        options.addOption("name", true, "test name to print in the statistics");
-        options.addOption("help", false, "print help");
+        options.addOption("rate", true, "Requests per second (default " + rateDefault + ")");
+        options.addOption("duration", true, "Minimum test duration in seconds: will wait for <duration> * <rate> requests to terminate or, if progress check enabled, no progress after <duration> (default " + durationDefault + ")");
+        options.addOption("maxconnections", true, "Maximum number of open connections (default " + maxConnectionsDefault + ")");
+        options.addOption("timeout", true, "Connection and read timeout in millis (default " + timeoutDefault + ")");
+        options.addOption("print", true, "Print cycle in millis, 0 to disable intermediate statistics (default " + printCycleDefault + ")");
+        options.addOption("check", true, "Progress check cycle in millis, 0 to disable progress check (default " + checkCycleDefault + ")");
+        options.addOption("stats", false, "Print full statistics when finish (default false)");
+        options.addOption("minmax", false, "Print min/mean/stddev/max stats when finish (default false)");
+        options.addOption("name", true, "Test name to print in the statistics (default '" + testNameDefault +  "')");
+        options.addOption("help", false, "Print help");
 
         try {
             final CommandLine cmd = new BasicParser().parse(options, args);
             final String[] ar = cmd.getArgs();
             if (cmd.hasOption("help") || ar.length != 1)
                 printUsageAndExit(options);
+
             final String url = ar[0];
-            final int timeout = Integer.parseInt(cmd.getOptionValue("timeout", "10000"));
-            final int maxConnections = Integer.parseInt(cmd.getOptionValue("maxconnections", "150000"));
-            final int duration = Integer.parseInt(cmd.getOptionValue("duration", "10"));
-            final int printCycle = Integer.parseInt(cmd.getOptionValue("print", "1000"));
-            final int checkCycle = Integer.parseInt(cmd.getOptionValue("check", "10000"));
-            final String testName = cmd.getOptionValue("name", "test");
-            final int rate = Integer.parseInt(cmd.getOptionValue("rate", "10"));
+
+            final int timeout = Integer.parseInt(cmd.getOptionValue("timeout", timeoutDefault));
+            final int maxConnections = Integer.parseInt(cmd.getOptionValue("maxconnections", maxConnectionsDefault));
+            final int duration = Integer.parseInt(cmd.getOptionValue("duration", durationDefault));
+            final int printCycle = Integer.parseInt(cmd.getOptionValue("print", printCycleDefault));
+            final int checkCycle = Integer.parseInt(cmd.getOptionValue("check", checkCycleDefault));
+            final String testName = cmd.getOptionValue("name", testNameDefault);
+            final int rate = Integer.parseInt(cmd.getOptionValue("rate", rateDefault));
+
             final MetricRegistry metrics = new MetricRegistry();
             final Meter requestMeter = metrics.meter("request");
             final Meter responseMeter = metrics.meter("response");
