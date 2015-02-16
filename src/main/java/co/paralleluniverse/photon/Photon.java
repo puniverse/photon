@@ -31,6 +31,7 @@ import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
@@ -48,6 +49,7 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
+import org.apache.http.impl.nio.reactor.ExceptionEvent;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +99,14 @@ public class Photon {
                     build());
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                final List<ExceptionEvent> events = ioreactor.getAuditLog();
+                for (ExceptionEvent event : events) {
+                    System.err.println("Apache Async HTTP Client I/O Reactor Error Time: " + event.getTimestamp());
+                    //noinspection ThrowableResultOfMethodCallIgnored
+                    if (event.getCause() != null)
+                        //noinspection ThrowableResultOfMethodCallIgnored
+                        event.getCause().printStackTrace();
+                }
                 if (cmd.hasOption("stats"))
                     printFinishStatistics(errorsMeter, sts, sh, testName);
                 if (!errors.keySet().isEmpty())
