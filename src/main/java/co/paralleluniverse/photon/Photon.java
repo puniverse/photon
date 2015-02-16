@@ -53,7 +53,6 @@ import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.ExceptionEvent;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
-import org.apache.http.nio.reactor.IOReactorStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +66,7 @@ public class Photon {
         options.addOption("maxconnections", true, "maximum number of open connections");
         options.addOption("timeout", true, "connection and read timeout in millis");
         options.addOption("print", true, "print cycle in millis. 0 to disable intermediate statistics");
+        options.addOption("check", true, "progress check cycle in millis. 0 to disable progress check");
         options.addOption("stats", false, "print full statistics when finish");
         options.addOption("minmax", false, "print min/mean/stddev/max stats when finish");
         options.addOption("name", true, "test name to print in the statistics");
@@ -82,6 +82,7 @@ public class Photon {
             final int maxConnections = Integer.parseInt(cmd.getOptionValue("maxconnections", "150000"));
             final int duration = Integer.parseInt(cmd.getOptionValue("duration", "10"));
             final int printCycle = Integer.parseInt(cmd.getOptionValue("print", "1000"));
+            final int checkCycle = Integer.parseInt(cmd.getOptionValue("check", "10000"));
             final String testName = cmd.getOptionValue("name", "test");
             final int rate = Integer.parseInt(cmd.getOptionValue("rate", "10"));
             final MetricRegistry metrics = new MetricRegistry();
@@ -147,14 +148,11 @@ public class Photon {
                         requestMeter.mark();
                         final long start = System.nanoTime();
                         try {
-                            if (ioreactor.getStatus() == IOReactorStatus.ACTIVE) {
-                                try (final CloseableHttpResponse ignored = client.execute(request)) {
-                                    responseMeter.mark();
-                                } catch (final Throwable t) {
-                                    markError(errorsMeter, errors, t);
-                                }
-                            } else
-                                markError(errorsMeter, errors);
+                            try (final CloseableHttpResponse ignored = client.execute(request)) {
+                                responseMeter.mark();
+                            } catch (final Throwable t) {
+                                markError(errorsMeter, errors, t);
+                            }
                         } catch (final Throwable t) {
                             markError(errorsMeter, errors, t);
                         } finally {
@@ -167,10 +165,34 @@ public class Photon {
                         }
                     }).start();
                 }
+                spawnProgressCheckThread(log, duration, checkCycle, cdl);
                 cdl.await();
             }
         } catch (final ParseException ex) {
             System.err.println("Parsing failed.  Reason: " + ex.getMessage());
+        }
+    }
+
+    private static void spawnProgressCheckThread(final Logger log, final int duration, final int checkCycle, final CountDownLatch cdl) {
+        if (checkCycle > 0) {
+            new Thread(() -> {
+                try {
+                    Thread.sleep(duration * 1000);
+
+                    long prevCount = cdl.getCount();
+                    while (!cdl.await(checkCycle, TimeUnit.MILLISECONDS)) {
+                        log.info("Checking progress");
+                        final long currCount = cdl.getCount();
+                        if (currCount == prevCount) {
+                            log.warn("No progress, exiting");
+                            System.exit(-1);
+                        }
+                        prevCount = currCount;
+                    }
+                } catch (final InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }).start();
         }
     }
 
@@ -180,10 +202,6 @@ public class Photon {
             errors.putIfAbsent(t.getClass().getName(), new AtomicInteger());
             errors.get(t.getClass().getName()).incrementAndGet();
         }
-    }
-
-    private static void markError(final Meter errorsMeter, final Map<String, AtomicInteger> errors) {
-        markError(errorsMeter, errors, null);
     }
 
     private static void printFinishStatistics(final Meter errors, final StripedTimeSeries<Long> sts, final StripedHistogram sh, final String testName) {
