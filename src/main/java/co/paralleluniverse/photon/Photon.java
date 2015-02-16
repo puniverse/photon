@@ -146,10 +146,10 @@ public class Photon {
                         try {
                             client.execute(request).close();
                             responseMeter.mark();
-                        } catch (IOException ex) {
+                        } catch (Throwable t) {
                             errorsMeter.mark();
-                            errors.putIfAbsent(ex.getClass().getName(), new AtomicInteger());
-                            errors.get(ex.getClass().getName()).incrementAndGet();
+                            errors.putIfAbsent(t.getClass().getName(), new AtomicInteger());
+                            errors.get(t.getClass().getName()).incrementAndGet();
                         } finally {
                             final long now = System.nanoTime();
                             final long millis = TimeUnit.NANOSECONDS.toMillis(now - start);
