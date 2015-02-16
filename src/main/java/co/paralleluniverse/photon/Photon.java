@@ -233,16 +233,16 @@ public class Photon {
     }
 
     private static void spawnStatisticsThread(final int printCycle, CountDownLatch cdl, final Logger log, final Meter requestMeter, final Meter responseMeter, final Meter errorsMeter, final String testName) {
-        new Thread(() -> {
-            try {
-                if (printCycle > 0)
-                    while (!cdl.await(printCycle, TimeUnit.MILLISECONDS)) {
-                        printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, testName, cdl);
-                    }
-            } catch (final InterruptedException ex) {
-                throw new RuntimeException(ex);
-            }
-        }).start();
+        if (printCycle > 0)
+            new Thread(() -> {
+                try {
+                        while (!cdl.await(printCycle, TimeUnit.MILLISECONDS)) {
+                            printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, testName, cdl);
+                        }
+                } catch (final InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }).start();
     }
 
     private static void printStatisticsLine(final Logger log, final Meter requestMeter, final Meter responseMeter, final Meter errorsMeter, final String testName, final CountDownLatch cdl) {
