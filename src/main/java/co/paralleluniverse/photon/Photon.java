@@ -32,6 +32,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
@@ -43,6 +44,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -51,6 +53,7 @@ import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.ExceptionEvent;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
+import org.apache.http.nio.reactor.IOReactorStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,12 +147,16 @@ public class Photon {
                         requestMeter.mark();
                         final long start = System.nanoTime();
                         try {
-                            client.execute(request).close();
-                            responseMeter.mark();
-                        } catch (Throwable t) {
-                            errorsMeter.mark();
-                            errors.putIfAbsent(t.getClass().getName(), new AtomicInteger());
-                            errors.get(t.getClass().getName()).incrementAndGet();
+                            if (ioreactor.getStatus() == IOReactorStatus.ACTIVE) {
+                                try (final CloseableHttpResponse ignored = client.execute(request)) {
+                                    responseMeter.mark();
+                                } catch (final Throwable t) {
+                                    markError(errorsMeter, errors, t);
+                                }
+                            } else
+                                markError(errorsMeter, errors);
+                        } catch (final Throwable t) {
+                            markError(errorsMeter, errors, t);
                         } finally {
                             final long now = System.nanoTime();
                             final long millis = TimeUnit.NANOSECONDS.toMillis(now - start);
@@ -165,6 +172,18 @@ public class Photon {
         } catch (final ParseException ex) {
             System.err.println("Parsing failed.  Reason: " + ex.getMessage());
         }
+    }
+
+    private static void markError(final Meter errorsMeter, final Map<String, AtomicInteger> errors, final Throwable t) {
+        errorsMeter.mark();
+        if (t != null) {
+            errors.putIfAbsent(t.getClass().getName(), new AtomicInteger());
+            errors.get(t.getClass().getName()).incrementAndGet();
+        }
+    }
+
+    private static void markError(final Meter errorsMeter, final Map<String, AtomicInteger> errors) {
+        markError(errorsMeter, errors, null);
     }
 
     private static void printFinishStatistics(final Meter errors, final StripedTimeSeries<Long> sts, final StripedHistogram sh, final String testName) {
