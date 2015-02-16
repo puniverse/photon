@@ -1,5 +1,7 @@
 /.gradle/
 /build/
 .nb-gradle/
+.idea/
 *.log
 *.jfr
+*.iml
