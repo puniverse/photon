@@ -189,7 +189,7 @@ public class Photon {
             try {
                 if (printCycle > 0)
                     while (!cdl.await(printCycle, TimeUnit.MILLISECONDS)) {
-                        printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, testName);
+                        printStatisticsLine(log, requestMeter, responseMeter, errorsMeter, testName, cdl);
                     }
             } catch (final InterruptedException ex) {
                 throw new RuntimeException(ex);
@@ -197,12 +197,13 @@ public class Photon {
         }).start();
     }
 
-    private static void printStatisticsLine(final Logger log, final Meter requestMeter, final Meter responseMeter, final Meter errorsMeter, final String testName) {
+    private static void printStatisticsLine(final Logger log, final Meter requestMeter, final Meter responseMeter, final Meter errorsMeter, final String testName, final CountDownLatch cdl) {
         log.info(testName + " STATS: "
                 + "req: " + requestMeter.getCount() + " " + nf.format(requestMeter.getMeanRate()) + "Hz "
                 + "resp: " + responseMeter.getCount() + " " + nf.format(responseMeter.getMeanRate()) + "Hz "
                 + "err: " + errorsMeter.getCount() + " "
-                + "open: " + (requestMeter.getCount() - errorsMeter.getCount() - responseMeter.getCount()));
+                + "open: " + (requestMeter.getCount() - errorsMeter.getCount() - responseMeter.getCount()) + " "
+                + "countdown: " + cdl.getCount());
     }
 
     private static void printUsageAndExit(final Options options) {
