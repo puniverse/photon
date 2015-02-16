@@ -115,18 +115,19 @@ public class Photon {
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 final List<ExceptionEvent> events = ioreactor.getAuditLog();
-                for (ExceptionEvent event : events) {
-                    System.err.println("Apache Async HTTP Client I/O Reactor Error Time: " + event.getTimestamp());
-                    //noinspection ThrowableResultOfMethodCallIgnored
-                    if (event.getCause() != null)
+                if (events != null)
+                    events.stream().filter(event -> event != null).forEach(event -> {
+                        System.err.println("Apache Async HTTP Client I/O Reactor Error Time: " + event.getTimestamp());
                         //noinspection ThrowableResultOfMethodCallIgnored
-                        event.getCause().printStackTrace();
-                }
+                        if (event.getCause() != null)
+                            //noinspection ThrowableResultOfMethodCallIgnored
+                            event.getCause().printStackTrace();
+                    });
                 if (cmd.hasOption("stats"))
                     printFinishStatistics(errorsMeter, sts, sh, testName);
                 if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
-                System.out.println(testName+" responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90)+"ms");
+                System.out.println(testName + " responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90) + "ms");
                 if (cmd.hasOption("minmax")) {
                     final HistogramData hd = sh.getHistogramData();
                     System.out.format("%s %8s%8s%8s%8s\n", testName, "min", "mean", "sd", "max");
