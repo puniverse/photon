@@ -185,7 +185,7 @@ public class Photon {
     }
 
     private static void spawnProgressCheckThread(final Logger log, final int duration, final int checkCycle, final CountDownLatch cdl) {
-        if (checkCycle > 0) {
+        if (checkCycle > 0)
             new Thread(() -> {
                 try {
                     Thread.sleep(duration * 1000);
@@ -204,7 +204,6 @@ public class Photon {
                     throw new RuntimeException(ex);
                 }
             }).start();
-        }
     }
 
     private static void markError(final Meter errorsMeter, final Map<String, AtomicInteger> errors, final Throwable t) {
