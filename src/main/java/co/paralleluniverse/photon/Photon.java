@@ -153,7 +153,7 @@ public class Photon {
                 for (int i = 0; i < num; i++) {
                     rl.acquire();
                     if (sem.availablePermits() == 0)
-                        System.out.println(new Date() + " waiting...");
+                        log.debug("Maximum connections count reached, waiting...");
                     sem.acquireUninterruptibly();
 
                     new Fiber<Void>(() -> {
