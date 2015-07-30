@@ -5,13 +5,14 @@ sourceCompatibility = '1.8'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 mainClassName = 'co.paralleluniverse.photon.Photon'
-version = "0.1.0"
+version = "0.2.0"
 
 ext.licenseName    = "Apache License, Version 2.0"
 ext.licenseUrl     = "http://www.apache.org/licenses/LICENSE-2.0"
-ext.quasarVersion = '0.6.0'
-ext.comsatVersion = '0.2.0'
-ext.jettyVersion  = '9.2.0.M0'
+ext.quasarVersion = '0.7.2'
+ext.comsatVersion = '0.4.0'
+
+ext.jettyVersion  = '9.2.10.v20150310'
 
 repositories {
     mavenLocal();
@@ -27,27 +28,31 @@ configurations {
 configurations.all {
     resolutionStrategy {
         //        failOnVersionConflict()
-        force 'org.slf4j:slf4j-api:1.7.6'
-        force 'com.google.guava:guava:16.0.1'
-        force 'org.ow2.asm:asm:5.0.1'
-        force 'org.ow2.asm:asm-commons:5.0.1'
+        force 'org.slf4j:slf4j-api:1.7.12'
+        force 'com.google.guava:guava:18.0'
+        force 'org.ow2.asm:asm:5.0.4'
+        force 'org.ow2.asm:asm-commons:5.0.4'
     }
 }
 
 dependencies {
-    compile "org.slf4j:slf4j-api:1.7.7"
+    compile "org.slf4j:slf4j-api:1.7.12"
     compile "co.paralleluniverse:quasar-core:$quasarVersion"
     compile "co.paralleluniverse:comsat-httpclient:$comsatVersion"    
     compile 'commons-cli:commons-cli:1.2'
+    compile 'org.hdrhistogram:HdrHistogram:2.1.5'
     runtime "org.apache.logging.log4j:log4j-slf4j-impl:2.0-rc1"
     runtime "org.apache.logging.log4j:log4j-api:2.0-rc1"
     runtime "org.apache.logging.log4j:log4j-core:2.0-rc1"
-    capsule 'co.paralleluniverse:capsule:0.3.1'
+
+    capsule 'co.paralleluniverse:capsule:1.0-rc2-SNAPSHOT'
+    capsule 'co.paralleluniverse:capsule-maven:1.0-rc2-SNAPSHOT'
+
     quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
 }
 
 run {
-    jvmArgs "-javaagent:${configurations.quasar.iterator().next()}" // =v, =d
+    jvmArgs "-javaagent:${configurations.quasar.iterator().next()}" // =v, =d, =c
     jvmArgs '-server'
     jvmArgs '-Xmx4096m'
     jvmArgs "-XX:+UseG1GC","-XX:MaxGCPauseMillis=200"
@@ -58,6 +63,7 @@ run {
         args project.args.split('\\s+')
     }
 }
+
 def getDependencies(config) {
     return config.getAllDependencies().collect { 
         def res = it.group + ':' + it.name + ':' + it.version + (!it.artifacts.isEmpty() ? ':' + it.artifacts.iterator().next().classifier : '')
@@ -67,6 +73,7 @@ def getDependencies(config) {
         return res
     }
 }
+
 task capsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
     from sourceSets.main.output // this way we don't need to extract
@@ -85,7 +92,7 @@ task capsule(type: Jar, dependsOn: classes) {
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
             'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
             'Dependencies'      : getDependencies(configurations.runtime).join(' '),
-            'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots'
+            'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots',
         )
     }
 }

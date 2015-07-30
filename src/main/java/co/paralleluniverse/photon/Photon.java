@@ -16,9 +16,9 @@
  */
 package co.paralleluniverse.photon;
 
-import org.HdrHistogram.HistogramData;
 import co.paralleluniverse.common.benchmark.StripedHistogram;
 import co.paralleluniverse.common.benchmark.StripedTimeSeries;
+import org.HdrHistogram.AbstractHistogram;
 import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.httpclient.FiberHttpClient;
 import com.codahale.metrics.Meter;
@@ -127,9 +127,9 @@ public class Photon {
                     printFinishStatistics(errorsMeter, sts, sh, testName);
                 if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
-                System.out.println(testName + " responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90) + "ms");
+                System.out.println(testName + " responseTime(90%): " + sh.getHistogramDataCorrectedForCoordinatedOmission(1).getValueAtPercentile(90) + "ms");
                 if (cmd.hasOption("minmax")) {
-                    final HistogramData hd = sh.getHistogramData();
+                    final AbstractHistogram hd = sh.getHistogramDataCorrectedForCoordinatedOmission(1);
                     System.out.format("%s %8s%8s%8s%8s\n", testName, "min", "mean", "sd", "max");
                     System.out.format("%s %8d%8.2f%8.2f%8d\n", testName, hd.getMinValue(), hd.getMean(), hd.getStdDeviation(), hd.getMaxValue());
                 }
@@ -225,7 +225,7 @@ public class Photon {
                     + " " + testName + " responseTime " + rec.value + "ms"));
             out.println("\nHistogram:");
             for (int i = 0; i <= 100; i++)
-                out.println(testName + " responseTimeHistogram " + i + "% : " + sh.getHistogramData().getValueAtPercentile(i));
+                out.println(testName + " responseTimeHistogram " + i + "% : " + sh.getHistogramDataCorrectedForCoordinatedOmission(1).getValueAtPercentile(i));
             System.out.println("Statistics file: " + file.getAbsolutePath());
         } catch (final FileNotFoundException ex) {
             System.err.println(ex.getMessage());
