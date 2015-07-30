@@ -23,6 +23,7 @@ repositories {
 configurations {
     quasar
     capsule
+    capsuleMaven
 }
 
 configurations.all {
@@ -46,7 +47,8 @@ dependencies {
     runtime "org.apache.logging.log4j:log4j-core:2.0-rc1"
 
     capsule 'co.paralleluniverse:capsule:1.0-rc2-SNAPSHOT'
-    capsule 'co.paralleluniverse:capsule-maven:1.0-rc2-SNAPSHOT'
+    capsuleMaven 'co.paralleluniverse:capsule-maven:1.0-rc2-SNAPSHOT'
+    capsule 'co.paralleluniverse:capsule-shield:0.1.0-SNAPSHOT'
 
     quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
 }
@@ -79,6 +81,7 @@ task capsule(type: Jar, dependsOn: classes) {
     from sourceSets.main.output // this way we don't need to extract
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
+    from { configurations.capsuleMaven.collect { zipTree(it) } } // we need all of Capsule's classes
     from 'log4j.xml'
 
     manifest {
@@ -93,6 +96,8 @@ task capsule(type: Jar, dependsOn: classes) {
             'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
             'Dependencies'      : getDependencies(configurations.runtime).join(' '),
             'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots',
+
+            'Caplets'           : 'MavenCapsule ShieldedCapsule'
         )
     }
 }
@@ -104,7 +109,7 @@ task fullCapsule(type: Jar, dependsOn: jar) {
     from { configurations.runtime } // embed dependencies
     from 'log4j.xml'
 
-    from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
+    from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
 
     manifest {
         attributes(
@@ -114,7 +119,9 @@ task fullCapsule(type: Jar, dependsOn: jar) {
             'Min-Java-Version'  : '1.8.0',
             'JVM-Args'          : run.jvmArgs.join(' '),
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
-            'Java-Agents'       : configurations.quasar.iterator().next().getName()
+            'Java-Agents'       : configurations.quasar.iterator().next().getName(),
+
+            'Caplets'           : 'ShieldedCapsule'
         )
     }
 }
