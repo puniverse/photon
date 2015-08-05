@@ -16,6 +16,7 @@
  */
 package co.paralleluniverse.photon;
 
+import co.paralleluniverse.common.util.Pair;
 import org.HdrHistogram.HistogramData;
 import co.paralleluniverse.common.benchmark.StripedHistogram;
 import co.paralleluniverse.common.benchmark.StripedTimeSeries;
@@ -101,7 +102,7 @@ public class Photon {
             final Meter responseMeter = metrics.meter("response");
             final Meter errorsMeter = metrics.meter("errors");
             final Logger log = LoggerFactory.getLogger(Photon.class);
-            final ConcurrentHashMap<String, AtomicInteger> errors = new ConcurrentHashMap<>();
+            final ConcurrentHashMap<Pair<String, String>, AtomicInteger> errors = new ConcurrentHashMap<>();
             final HttpGet request = new HttpGet(url);
             final StripedTimeSeries<Long> sts = new StripedTimeSeries<>(30000, false);
             final StripedHistogram sh = new StripedHistogram(60000, 5);
@@ -124,7 +125,7 @@ public class Photon {
                             event.getCause().printStackTrace();
                     });
                 if (cmd.hasOption("stats"))
-                    printFinishStatistics(errorsMeter, sts, sh, testName);
+                    printFinishStatistics(errorsMeter, errors, sts, sh, testName);
                 if (!errors.keySet().isEmpty())
                     errors.entrySet().stream().forEach(p -> log.info(testName+" "+p.getKey() + " " + p.getValue()+"ms"));
                 System.out.println(testName + " responseTime(90%): " + sh.getHistogramData().getValueAtPercentile(90) + "ms");
@@ -207,18 +208,20 @@ public class Photon {
             }).start();
     }
 
-    private static void markError(final Meter errorsMeter, final Map<String, AtomicInteger> errors, final Throwable t) {
+    private static void markError(final Meter errorsMeter, final Map<Pair<String, String>, AtomicInteger> errors, final Throwable t) {
         errorsMeter.mark();
         if (t != null) {
-            errors.putIfAbsent(t.getClass().getName(), new AtomicInteger());
-            errors.get(t.getClass().getName()).incrementAndGet();
+            final Pair<String, String> key = new Pair<>(t.getClass().getName(), t.getMessage());
+            errors.putIfAbsent(key, new AtomicInteger());
+            errors.get(key).incrementAndGet();
         }
     }
 
-    private static void printFinishStatistics(final Meter errors, final StripedTimeSeries<Long> sts, final StripedHistogram sh, final String testName) {
+    private static void printFinishStatistics(final Meter errorsMeter, Map<Pair<String, String>, AtomicInteger> errors, final StripedTimeSeries<Long> sts, final StripedHistogram sh, final String testName) {
         final File file = new File(testName + ".txt");
         try (PrintWriter out = new PrintWriter(file)) {
-            out.println("ErrorsCounter: "+errors.getCount());
+            out.println("ErrorsCounter: "+errorsMeter.getCount());
+            errors.forEach((n, c) -> out.println("Error " + n + " count " + c));
             final long millisTime = new Date().getTime();
             final long nanoTime = System.nanoTime();
             sts.getRecords().forEach(rec -> out.println(df.format(new Date(millisTime - TimeUnit.NANOSECONDS.toMillis(nanoTime - rec.timestamp)))
