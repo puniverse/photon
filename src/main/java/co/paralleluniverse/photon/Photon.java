@@ -66,7 +66,37 @@ public class Photon {
     private static final String printCycleDefault = "1000";
     private static final String checkCycleDefault = "10000";
 
-    public static void main(final String[] args) throws InterruptedException, IOException {
+/*
+    public static void walk( String path ) throws ClassNotFoundException {
+        File root = new File( path );
+        File[] list = root.listFiles();
+
+        if (list == null) return;
+
+        for ( File f : list ) {
+            if ( f.isDirectory() ) {
+                walk( f.getAbsolutePath() );
+                System.out.println( "Dir:" + f.getAbsoluteFile() );
+            }
+            else {
+                System.out.println( "File:" + f.getAbsoluteFile() );
+            }
+        }
+    }
+*/
+
+    public static void main(final String[] args) throws ClassNotFoundException, IOException, InterruptedException {
+/*
+        walk("/capsule");
+        System.out.println("forName: " + Class.forName("org.HdrHistogram.AbstractHistogram"));
+        System.out.println("loadClass: " + Photon.class.getClassLoader().loadClass("org.HdrHistogram.AbstractHistogram"));
+        System.out.println("static: " + org.HdrHistogram.AbstractHistogram.class);
+        final StripedHistogram sh = new StripedHistogram(60000, 5);
+*/
+        main2(args);
+    }
+
+    public static void main2(final String[] args) throws InterruptedException, IOException {
 
         final Options options = new Options();
         options.addOption("rate", true, "Requests per second (default " + rateDefault + ")");
