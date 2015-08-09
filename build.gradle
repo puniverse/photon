@@ -23,7 +23,7 @@ repositories {
 configurations {
     quasar
     capsule
-    capsuleOsv
+    capsuleSecure
     capsuleMaven
 }
 
@@ -49,7 +49,7 @@ dependencies {
 
     capsule 'co.paralleluniverse:capsule:1.0-rc2-SNAPSHOT'
     capsuleMaven 'co.paralleluniverse:capsule-maven:1.0-rc2-SNAPSHOT'
-    capsuleOsv 'co.paralleluniverse:capsule-osv:0.1.0-SNAPSHOT'
+    capsuleSecure 'co.paralleluniverse:capsule-secure:0.1.0-SNAPSHOT'
 
     quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
 }
@@ -103,13 +103,13 @@ task basicCapsule(type: Jar, dependsOn: classes) {
     }
 }
 
-task osvCapsule(type: Jar, dependsOn: classes) {
+task secureCapsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
     from sourceSets.main.output // this way we don't need to extract
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
-    from { configurations.capsuleOsv.collect { zipTree(it) } } // we need all of Capsule's classes
     from { configurations.capsuleMaven.collect { zipTree(it) } } // we need all of Capsule's classes
+    from { configurations.capsuleSecure.collect { zipTree(it) } } // we need all of Capsule's classes
     from 'log4j.xml'
 
     manifest {
@@ -125,12 +125,12 @@ task osvCapsule(type: Jar, dependsOn: classes) {
             'Dependencies'      : getDependencies(configurations.runtime).join(' '),
             'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots',
 
-            'Caplets'           : 'MavenCapsule OsvCapsule'
+            'Caplets'           : 'MavenCapsule SecureCapsule'
         )
     }
 }
 
-task osvFullCapsule(type: Jar, dependsOn: jar) {
+task secureFatCapsule(type: Jar, dependsOn: jar) {
     archiveName = "photon.jar"
 
     from jar // embed our application jar
@@ -138,7 +138,7 @@ task osvFullCapsule(type: Jar, dependsOn: jar) {
     from 'log4j.xml'
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
-    from { configurations.capsuleOsv.collect { zipTree(it) } } // we need all of Capsule's classes
+    from { configurations.capsuleSecure.collect { zipTree(it) } } // we need all of Capsule's classes
 
     manifest {
         attributes(
@@ -150,7 +150,7 @@ task osvFullCapsule(type: Jar, dependsOn: jar) {
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
             'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
 
-            'Caplets'           : 'OsvCapsule'
+            'Caplets'           : 'SecureCapsule'
         )
     }
 }
