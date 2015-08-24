@@ -110,7 +110,7 @@ task fatCapsule(type: Jar, dependsOn: jar) {
     from { configurations.runtime } // embed dependencies
     from 'log4j.xml'
 
-    from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
+    from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
 
     manifest {
         attributes(
@@ -159,7 +159,7 @@ task osvFatCapsule(type: Jar, dependsOn: jar) {
     from { configurations.runtime } // embed dependencies
     from 'log4j.xml'
 
-    from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
+    from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
     from { configurations.capsuleOsv.collect { zipTree(it) } } // we need all of Capsule's classes
 
     manifest {
