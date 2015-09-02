@@ -23,8 +23,8 @@ repositories {
 configurations {
     quasar
     capsule
-    capsuleOsv
     capsuleMaven
+    capsuleSuper
 }
 
 configurations.all {
@@ -49,7 +49,7 @@ dependencies {
 
     capsule 'co.paralleluniverse:capsule:1.0-rc2-SNAPSHOT'
     capsuleMaven 'co.paralleluniverse:capsule-maven:1.0-rc2-SNAPSHOT'
-    capsuleOsv 'co.paralleluniverse:capsule-osv:0.1.0-SNAPSHOT'
+    capsuleSuper 'co.paralleluniverse:capsule-super:0.1.0-SNAPSHOT'
 
     quasar  "co.paralleluniverse:quasar-core:$quasarVersion"
 }
@@ -79,10 +79,12 @@ def getDependencies(config) {
 
 task capsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
+
     from sourceSets.main.output // this way we don't need to extract
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
     from { configurations.capsuleMaven.collect { zipTree(it) } } // we need all of Capsule's classes
+
     from 'log4j.xml'
 
     manifest {
@@ -108,6 +110,7 @@ task fatCapsule(type: Jar, dependsOn: jar) {
 
     from jar // embed our application jar
     from { configurations.runtime } // embed dependencies
+
     from 'log4j.xml'
 
     from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
@@ -125,13 +128,18 @@ task fatCapsule(type: Jar, dependsOn: jar) {
     }
 }
 
-task osvCapsule(type: Jar, dependsOn: classes) {
+task superCapsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
+
     from sourceSets.main.output // this way we don't need to extract
 
     from { configurations.capsule.collect { zipTree(it) } } // we need all of Capsule's classes
-    from { configurations.capsuleOsv.collect { zipTree(it) } } // we need all of Capsule's classes
     from { configurations.capsuleMaven.collect { zipTree(it) } } // we need all of Capsule's classes
+
+    into('capsule') {
+        from configurations.capsuleSuper
+    }
+
     from 'log4j.xml'
 
     manifest {
@@ -143,24 +151,28 @@ task osvCapsule(type: Jar, dependsOn: classes) {
             'Min-Java-Version'  : '1.8.0',
             'JVM-Args'          : run.jvmArgs.join(' '),
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
-//            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
             'Dependencies'      : getDependencies(configurations.runtime).join(' '),
             'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots',
 
-            'Caplets'           : 'MavenCapsule OsvCapsule'
+            'Caplets'           : 'MavenCapsule co.paralleluniverse:capsule-super:0.1.0-SNAPSHOT'
         )
     }
 }
 
-task osvFatCapsule(type: Jar, dependsOn: jar) {
+task superFatCapsule(type: Jar, dependsOn: jar) {
     archiveName = "photon.jar"
 
     from jar // embed our application jar
     from { configurations.runtime } // embed dependencies
-    from 'log4j.xml'
 
     from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
-    from { configurations.capsuleOsv.collect { zipTree(it) } } // we need all of Capsule's classes
+
+    into('capsule') {
+        from configurations.capsuleSuper
+    }
+
+    from 'log4j.xml'
 
     manifest {
         attributes(
@@ -170,9 +182,9 @@ task osvFatCapsule(type: Jar, dependsOn: jar) {
             'Min-Java-Version'  : '1.8.0',
             'JVM-Args'          : run.jvmArgs.join(' '),
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
-//            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
 
-            'Caplets'           : 'OsvCapsule'
+            'Caplets'           : 'co.paralleluniverse:capsule-super:0.1.0-SNAPSHOT'
         )
     }
 }
