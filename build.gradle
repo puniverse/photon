@@ -86,7 +86,8 @@ task capsule(type: Jar, dependsOn: classes) {
     from 'log4j.xml'
 
     manifest {
-        attributes(
+        attributes (
+            'Premain-Class'     : 'Capsule',
             'Main-Class'        : 'Capsule',
             'Application-Class' : mainClassName,
             'Application-Version' : version,
@@ -113,7 +114,8 @@ task fatCapsule(type: Jar, dependsOn: jar) {
     from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
 
     manifest {
-        attributes(
+        attributes (
+            'Premain-Class'     : 'Capsule',
             'Main-Class'        : 'Capsule',
             'Application-Class' : mainClassName,
             'Application-Version' : version,
@@ -135,7 +137,8 @@ task shieldCapsule(type: Jar, dependsOn: classes) {
     from 'log4j.xml'
 
     manifest {
-        attributes(
+        attributes (
+            'Premain-Class'     : 'Capsule',
             'Main-Class'        : 'Capsule',
             'Application-Class' : mainClassName,
             'Application-Version' : version,
@@ -163,7 +166,8 @@ task shieldFatCapsule(type: Jar, dependsOn: jar) {
     from { configurations.capsuleShield.collect { zipTree(it) } } // we need all of Capsule's classes
 
     manifest {
-        attributes(
+        attributes (
+            'Premain-Class'     : 'Capsule',
             'Main-Class'        : 'Capsule',
             'Application-Class' : mainClassName,
             'Application-Version' : version,
