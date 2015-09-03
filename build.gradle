@@ -77,7 +77,7 @@ def getDependencies(config) {
     }
 }
 
-task basicCapsule(type: Jar, dependsOn: classes) {
+task capsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
     from sourceSets.main.output // this way we don't need to extract
 
