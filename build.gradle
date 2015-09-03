@@ -103,6 +103,30 @@ task capsule(type: Jar, dependsOn: classes) {
     }
 }
 
+task fatCapsule(type: Jar, dependsOn: jar) {
+    archiveName = "photon.jar"
+
+    from jar // embed our application jar
+    from { configurations.runtime } // embed dependencies
+
+    from 'log4j.xml'
+
+    from(configurations.capsule.collect { zipTree(it) }) { include 'Capsule.class' } // we just need the single Capsule class
+
+    manifest {
+        attributes (
+            'Premain-Class'     : 'Capsule',
+            'Main-Class'        : 'Capsule',
+            'Application-Class' : mainClassName,
+            'Application-Version' : version,
+            'Min-Java-Version'  : '1.8.0',
+            'JVM-Args'          : run.jvmArgs.join(' '),
+            'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+        )
+    }
+}
+
 task secureCapsule(type: Jar, dependsOn: classes) {
     archiveName = "photon.jar"
     from sourceSets.main.output // this way we don't need to extract
