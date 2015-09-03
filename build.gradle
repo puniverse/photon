@@ -96,7 +96,7 @@ task capsule(type: Jar, dependsOn: classes) {
             'Min-Java-Version'  : '1.8.0',
             'JVM-Args'          : run.jvmArgs.join(' '),
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
-//            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
             'Dependencies'      : getDependencies(configurations.runtime).join(' '),
             'Repositories'      : 'central https://oss.sonatype.org/content/repositories/snapshots',
 
@@ -123,7 +123,7 @@ task fatCapsule(type: Jar, dependsOn: jar) {
             'Min-Java-Version'  : '1.8.0',
             'JVM-Args'          : run.jvmArgs.join(' '),
             'System-Properties' : run.systemProperties.collect { k,v -> "$k=$v" }.join(' '),
-//            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
+            'Java-Agents'       : getDependencies(configurations.quasar).iterator().next(),
         )
     }
 }
