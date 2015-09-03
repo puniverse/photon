@@ -9,8 +9,8 @@ version = "0.2.0"
 
 ext.licenseName    = "Apache License, Version 2.0"
 ext.licenseUrl     = "http://www.apache.org/licenses/LICENSE-2.0"
-ext.quasarVersion = '0.7.2'
-ext.comsatVersion = '0.4.0'
+ext.quasarVersion = '0.7.3'
+ext.comsatVersion = '0.5.0'
 
 ext.jettyVersion  = '9.2.10.v20150310'
 
